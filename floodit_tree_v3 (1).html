@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Flood-It Backtracking Tree (Verified)</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #eae6de;
+  font-family: 'Courier New', monospace;
+  overflow: auto;
+  padding-bottom: 80px;
+}
+.title-bar {
+  text-align: center;
+  padding: 14px 0 6px;
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: #222;
+}
+.legend {
+  display: flex; justify-content: center; gap: 18px;
+  font-size: 11px; color: #555; padding-bottom: 10px;
+  flex-wrap: wrap;
+}
+.leg { display: flex; align-items: center; gap: 5px; }
+.lb  { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #777; }
+
+#wrap {
+  position: relative;
+  width: 2200px;
+  margin: 0 auto;
+}
+svg#lines {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none; z-index: 0;
+}
+.tree {
+  position: relative; z-index: 1;
+  padding: 20px 0 60px;
+}
+.level {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 22px;
+  margin-bottom: 0;
+}
+.spacer { height: 68px; }
+
+/* node */
+.node {
+  display: flex; flex-direction: column;
+  align-items: center; position: relative;
+}
+.elabel {
+  font-size: 12px; font-weight: bold;
+  padding: 2px 10px; border-radius: 4px;
+  margin-bottom: 5px; min-height: 20px;
+  border: 1.5px solid transparent;
+}
+.elG { background: #c8f5d4; color: #155724; border-color: #16a34a; }
+.elB { background: #dbeafe; color: #1e3a8a; border-color: #1d6fe8; }
+.elR { background: #fee2e2; color: #7f1d1d; border-color: #dc2626; }
+.elX { background: transparent; border-color: transparent; color: transparent; min-height: 6px; padding: 0; }
+
+.gbox {
+  border: 2.5px solid #222;
+  border-radius: 5px;
+  display: inline-grid;
+  gap: 2px; padding: 3px;
+  background: #333;
+  box-shadow: 3px 3px 7px rgba(0,0,0,0.22);
+  position: relative;
+  transition: transform .12s;
+}
+.gbox:hover { transform: scale(1.07); }
+
+.root .gbox {
+  box-shadow: 0 0 0 3px #60a5fa, 3px 3px 10px rgba(0,0,0,.3);
+  border-color: #1e293b;
+}
+
+.c {
+  width: 27px; height: 27px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9.5px; font-weight: bold; color: #fff;
+  text-shadow: 0 0 3px rgba(0,0,0,.8);
+  border-radius: 3px;
+}
+.cB { background: #1d6fe8; }
+.cG { background: #16a34a; }
+.cR { background: #dc2626; }
+.fl  { outline: 2.5px solid #fff; outline-offset: 1px; }
+
+.dbadge {
+  position: absolute; top: -11px; right: -11px;
+  background: #1e293b; color: #fff;
+  font-size: 9px; width: 20px; height: 20px;
+  border-radius: 50%; display: flex;
+  align-items: center; justify-content: center;
+  font-weight: bold; border: 2px solid #eae6de;
+}
+.dbadge.solved { background: #22c55e; }
+
+.info {
+  margin-top: 5px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 3px;
+}
+.nb-label {
+  font-size: 10px; color: #222;
+  background: #fffde7; border: 1px solid #d4b400;
+  border-radius: 3px; padding: 1px 7px;
+  white-space: nowrap;
+}
+.mv-label { font-size: 10px; color: #555; }
+.solved-tag {
+  font-size: 10px; font-weight: bold;
+  background: #22c55e; color: #fff;
+  border-radius: 10px; padding: 2px 10px;
+}
+.path-tag { font-size: 9px; color: #333; font-style: italic; }
+</style>
+</head>
+<body>
+
+<div class="title-bar">
+  Flood-It — Backtracking Tree &nbsp;|&nbsp;
+  Grid: B G B G / R G R B / G G B G / B R B G &nbsp;|&nbsp;
+  Flood = 4-directional only (↑↓←→)
+</div>
+<div class="legend">
+  <div class="leg"><div class="lb" style="background:#1d6fe8"></div>B = Blue</div>
+  <div class="leg"><div class="lb" style="background:#16a34a"></div>G = Green</div>
+  <div class="leg"><div class="lb" style="background:#dc2626"></div>R = Red</div>
+  <div class="leg"><div class="lb" style="background:#fff;outline:2.5px solid #555;outline-offset:1px"></div>White ring = flood region</div>
+</div>
+
+<div id="wrap">
+<svg id="lines"></svg>
+<div class="tree">
+
+<!--
+=================================================================
+  DEPTH 0  —  Initial
+  Grid:
+    B G B G
+    R G R B
+    G G B G
+    B R B G
+  Flood region (BFS from (0,0)=B, 4-dir, same color):
+    (0,0)=B → (0,1)=G✗  (1,0)=R✗  → region = {(0,0)}
+  Neighbor colors: {G, R}
+=================================================================
+-->
+<div class="level" id="lv0">
+  <div class="node root" id="n0">
+    <div class="elabel elX">&nbsp;</div>
+    <div style="position:relative">
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cB fl">B</div><div class="c cG">G</div><div class="c cB">B</div><div class="c cG">G</div>
+        <div class="c cR">R</div><div class="c cG">G</div><div class="c cR">R</div><div class="c cB">B</div>
+        <div class="c cG">G</div><div class="c cG">G</div><div class="c cB">B</div><div class="c cG">G</div>
+        <div class="c cB">B</div><div class="c cR">R</div><div class="c cB">B</div><div class="c cG">G</div>
+      </div>
+      <div class="dbadge">0</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {G, R}</div>
+      <div class="mv-label">Moves: 0</div>
+    </div>
+  </div>
+</div>
+
+<div class="spacer"></div>
+
+<!--
+=================================================================
+  DEPTH 1
+
+  ── Choose G:  flood (0,0)=B → G.
+     Old=B, only (0,0) was B in flood region → (0,0) becomes G.
+     Grid: G G B G / R G R B / G G B G / B R B G
+     New flood BFS from (0,0)=G:
+       (0,0)G→(0,1)=G✓→(1,1)=G✓→(2,1)=G✓→(2,0)=G✓
+       (0,1)→(0,2)=B✗
+       (1,1)→(1,0)=R✗ (1,2)=R✗
+       (2,1)→(3,1)=R✗ (2,2)=B✗
+       (2,0)→(3,0)=B✗
+     Flood = {(0,0),(0,1),(1,1),(2,0),(2,1)}
+     Neighbors: {B, R}
+
+  ── Choose R:  flood (0,0)=B → R.
+     Old=B, only (0,0) → R.
+     Grid: R G B G / R G R B / G G B G / B R B G
+     New flood BFS from (0,0)=R:
+       (0,0)R→(1,0)=R✓
+       (1,0)→(2,0)=G✗ (1,1)=G✗
+       (0,0)→(0,1)=G✗
+     Flood = {(0,0),(1,0)}
+     Neighbors: {G}
+=================================================================
+-->
+<div class="level" id="lv1">
+
+  <!-- n1g -->
+  <div class="node" id="n1g">
+    <div class="elabel elG">G</div>
+    <div style="position:relative">
+      <!--
+        G G B G
+        R G R B
+        G G B G
+        B R B G
+        flood: (0,0)(0,1)(1,1)(2,0)(2,1)
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cB">B</div><div class="c cG">G</div>
+        <div class="c cR">R</div><div class="c cG fl">G</div><div class="c cR">R</div><div class="c cB">B</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cB">B</div><div class="c cG">G</div>
+        <div class="c cB">B</div><div class="c cR">R</div><div class="c cB">B</div><div class="c cG">G</div>
+      </div>
+      <div class="dbadge">1</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {B, R}</div>
+      <div class="mv-label">Moves: 1</div>
+    </div>
+  </div>
+
+  <!-- n1r -->
+  <div class="node" id="n1r">
+    <div class="elabel elR">R</div>
+    <div style="position:relative">
+      <!--
+        R G B G
+        R G R B
+        G G B G
+        B R B G
+        flood: (0,0)(1,0)
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cR fl">R</div><div class="c cG">G</div><div class="c cB">B</div><div class="c cG">G</div>
+        <div class="c cR fl">R</div><div class="c cG">G</div><div class="c cR">R</div><div class="c cB">B</div>
+        <div class="c cG">G</div><div class="c cG">G</div><div class="c cB">B</div><div class="c cG">G</div>
+        <div class="c cB">B</div><div class="c cR">R</div><div class="c cB">B</div><div class="c cG">G</div>
+      </div>
+      <div class="dbadge">1</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {G}</div>
+      <div class="mv-label">Moves: 1</div>
+    </div>
+  </div>
+
+</div>
+<div class="spacer"></div>
+
+<!--
+=================================================================
+  DEPTH 2
+
+  ── n1g → B:  flood region {(0,0),(0,1),(1,1),(2,0),(2,1)} G → B
+     Grid: B B B G / R B R B / B B B G / B R B G
+     New flood BFS from (0,0)=B:
+       (0,0)B→(0,1)=B✓→(0,2)=B✓→(1,1)=B✓
+       (0,2)→(0,3)=G✗ (1,2)=R✗
+       (1,1)→(1,0)=R✗ (1,2)=R✗ (2,1)=B✓
+       (2,1)→(2,0)=B✓ (2,2)=B✓ (3,1)=R✗
+       (2,0)→(3,0)=B✓
+       (2,2)→(2,3)=G✗ (3,2)=B✓ (1,2)=R✗
+       (3,0)→(3,1)=R✗
+       (3,2)→(3,1)=R✗ (3,3)=G✗
+       Also (1,3)=B: reach via (0,3)=G✗ (1,2)=R✗ (2,3)=G✗ → NOT reachable
+     Flood = {(0,0),(0,1),(0,2),(1,1),(2,0),(2,1),(2,2),(3,0),(3,2)}
+     Neighbors: {R, G}
+
+  ── n1g → R:  flood region {(0,0),(0,1),(1,1),(2,0),(2,1)} G → R
+     Grid: R R B G / R R R B / R R B G / B R B G
+     New flood BFS from (0,0)=R:
+       (0,0)R→(0,1)=R✓→(1,0)=R✓→(1,1)=R✓
+       (1,0)→(2,0)=R✓
+       (1,1)→(1,2)=R✓
+       (1,2)→(0,2)=B✗ (2,2)=B✗ (1,3)=B✗
+       (2,0)→(2,1)=R✓ (3,0)=B✗
+       (2,1)→(2,2)=B✗ (3,1)=R✓
+       (3,1)→(3,0)=B✗ (3,2)=B✗
+     Flood = {(0,0),(0,1),(1,0),(1,1),(1,2),(2,0),(2,1),(3,1)}
+     Neighbors: {B}
+
+  ── n1r → G:  flood region {(0,0),(1,0)} R → G
+     Grid: G G B G / G G R B / G G B G / B R B G
+     New flood BFS from (0,0)=G:
+       (0,0)G→(0,1)=G✓→(1,0)=G✓→(1,1)=G✓
+       (1,0)→(2,0)=G✓
+       (1,1)→(1,2)=R✗ (2,1)=G✓
+       (2,0)→(2,1)=G✓ (3,0)=B✗
+       (2,1)→(2,2)=B✗ (3,1)=R✗
+       (0,1)→(0,2)=B✗
+     Flood = {(0,0),(0,1),(1,0),(1,1),(2,0),(2,1)}
+     Neighbors: {B, R}
+=================================================================
+-->
+<div class="level" id="lv2">
+
+  <!-- n2gb -->
+  <div class="node" id="n2gb">
+    <div class="elabel elB">B</div>
+    <div style="position:relative">
+      <!--
+        B B B G
+        R B R B
+        B B B G
+        B R B G
+        flood: (0,0)(0,1)(0,2)(1,1)(2,0)(2,1)(2,2)(3,0)(3,2)
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cG">G</div>
+        <div class="c cR">R</div><div class="c cB fl">B</div><div class="c cR">R</div><div class="c cB">B</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cG">G</div>
+        <div class="c cB fl">B</div><div class="c cR">R</div><div class="c cB fl">B</div><div class="c cG">G</div>
+      </div>
+      <div class="dbadge">2</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {R, G}</div>
+      <div class="mv-label">Moves: 2</div>
+    </div>
+  </div>
+
+  <!-- n2gr -->
+  <div class="node" id="n2gr">
+    <div class="elabel elR">R</div>
+    <div style="position:relative">
+      <!--
+        R R B G
+        R R R B
+        R R B G
+        B R B G
+        flood: (0,0)(0,1)(1,0)(1,1)(1,2)(2,0)(2,1)(3,1)
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cB">B</div><div class="c cG">G</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cB">B</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cB">B</div><div class="c cG">G</div>
+        <div class="c cB">B</div><div class="c cR fl">R</div><div class="c cB">B</div><div class="c cG">G</div>
+      </div>
+      <div class="dbadge">2</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {B}</div>
+      <div class="mv-label">Moves: 2</div>
+    </div>
+  </div>
+
+  <!-- n2rg -->
+  <div class="node" id="n2rg">
+    <div class="elabel elG">G</div>
+    <div style="position:relative">
+      <!--
+        G G B G
+        G G R B
+        G G B G
+        B R B G
+        flood: (0,0)(0,1)(1,0)(1,1)(2,0)(2,1)
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cB">B</div><div class="c cG">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cR">R</div><div class="c cB">B</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cB">B</div><div class="c cG">G</div>
+        <div class="c cB">B</div><div class="c cR">R</div><div class="c cB">B</div><div class="c cG">G</div>
+      </div>
+      <div class="dbadge">2</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {B, R}</div>
+      <div class="mv-label">Moves: 2</div>
+    </div>
+  </div>
+
+</div>
+<div class="spacer"></div>
+
+<!--
+=================================================================
+  DEPTH 3
+
+  ── n2gb → G:  flood {(0,0)(0,1)(0,2)(1,1)(2,0)(2,1)(2,2)(3,0)(3,2)} B→G
+     Grid: G G G G / R G R B / G G G G / G R G G
+     Flood BFS from (0,0)=G:
+       Traverses: (0,0)(0,1)(0,2)(0,3) top row
+       (1,1)=G→(1,0)=R✗ (1,2)=R✗
+       (2,0)(2,1)(2,2)(2,3)=G all connect
+       (3,0)→(3,1)=R✗
+       (3,2)(3,3) connect via (2,2)(2,3)
+       NOT in flood: (1,0)=R (1,2)=R (3,1)=R (1,3)=B
+     Flood = {(0,0)(0,1)(0,2)(0,3)(1,1)(2,0)(2,1)(2,2)(2,3)(3,0)(3,2)(3,3)}
+     Neighbors: {R, B}
+
+  ── n2gb → R:  flood same B cells → R
+     Grid: R R R G / R R R B / R R R G / R R R G
+     Flood BFS from (0,0)=R: all 12 R cells connect
+     NOT in flood: (0,3)=G (1,3)=B (2,3)=G (3,3)=G
+     Neighbors: {G, B}
+
+  ── n2gr → B:  (only neighbor) flood {8 R cells} → B
+     Grid: B B B G / B B B B / B B B G / B B B G
+     Flood BFS from (0,0)=B: all B connect including (1,3) via (1,2)
+     Flood = all 13 B cells
+     NOT in flood: (0,3)=G (2,3)=G (3,3)=G
+     Neighbors: {G}
+
+  ── n2rg → B:  flood {(0,0)(0,1)(1,0)(1,1)(2,0)(2,1)} G→B
+     Grid: B B B G / B B R B / B B B G / B R B G
+     Flood BFS from (0,0)=B:
+       (0,0)→(0,1)=B✓→(0,2)=B✓
+       (0,2)→(0,3)=G✗ (1,2)=R✗
+       (1,0)=B→(2,0)=B✓
+       (1,1)=B→(1,2)=R✗ (2,1)=B✓
+       (2,0)→(3,0)=B✓ (2,1)=B✓
+       (2,1)→(2,2)=B✓ (3,1)=R✗
+       (2,2)→(2,3)=G✗ (3,2)=B✓ (1,2)=R✗
+       (3,2)→(3,1)=R✗ (3,3)=G✗
+       (1,3)=B: (0,3)=G✗ (1,2)=R✗ (2,3)=G✗ → NOT reachable
+     Flood = {(0,0)(0,1)(0,2)(1,0)(1,1)(2,0)(2,1)(2,2)(3,0)(3,2)}
+     Neighbors: {R, G}
+
+  ── n2rg → R:  flood {(0,0)(0,1)(1,0)(1,1)(2,0)(2,1)} G→R
+     Grid: R R B G / R R R B / R R B G / B R B G
+     Flood BFS from (0,0)=R:
+       same as n2gr grid! {(0,0)(0,1)(1,0)(1,1)(1,2)(2,0)(2,1)(3,1)}
+     Neighbors: {B}
+=================================================================
+-->
+<div class="level" id="lv3">
+
+  <!-- n3gbG -->
+  <div class="node" id="n3gbG">
+    <div class="elabel elG">G</div>
+    <div style="position:relative">
+      <!--
+        G G G G
+        R G R B
+        G G G G
+        G R G G
+        flood: all except (1,0)R (1,2)R (3,1)R (1,3)B
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cR">R</div><div class="c cG fl">G</div><div class="c cR">R</div><div class="c cB">B</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cR">R</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+      </div>
+      <div class="dbadge">3</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {R, B}</div>
+      <div class="mv-label">Moves: 3</div>
+    </div>
+  </div>
+
+  <!-- n3gbR -->
+  <div class="node" id="n3gbR">
+    <div class="elabel elR">R</div>
+    <div style="position:relative">
+      <!--
+        R R R G
+        R R R B
+        R R R G
+        R R R G
+        flood: all 12 R cells; non-flood: (0,3)G (1,3)B (2,3)G (3,3)G
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cG">G</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cB">B</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cG">G</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cG">G</div>
+      </div>
+      <div class="dbadge">3</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {G, B}</div>
+      <div class="mv-label">Moves: 3</div>
+    </div>
+  </div>
+
+  <!-- n3grB -->
+  <div class="node" id="n3grB">
+    <div class="elabel elB">B</div>
+    <div style="position:relative">
+      <!--
+        B B B G
+        B B B B
+        B B B G
+        B B B G
+        flood: all 13 B cells; non-flood: (0,3)G (2,3)G (3,3)G
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cG">G</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cG">G</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cG">G</div>
+      </div>
+      <div class="dbadge">3</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {G}</div>
+      <div class="mv-label">Moves: 3</div>
+    </div>
+  </div>
+
+  <!-- n3rgB -->
+  <div class="node" id="n3rgB">
+    <div class="elabel elB">B</div>
+    <div style="position:relative">
+      <!--
+        B B B G
+        B B R B
+        B B B G
+        B R B G
+        flood: (0,0)(0,1)(0,2)(1,0)(1,1)(2,0)(2,1)(2,2)(3,0)(3,2)
+        non-flood: (0,3)G (1,2)R (1,3)B(isolated) (2,3)G (3,1)R (3,3)G
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cG">G</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cR">R</div><div class="c cB">B</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cG">G</div>
+        <div class="c cB fl">B</div><div class="c cR">R</div><div class="c cB fl">B</div><div class="c cG">G</div>
+      </div>
+      <div class="dbadge">3</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {R, G}</div>
+      <div class="mv-label">Moves: 3</div>
+    </div>
+  </div>
+
+  <!-- n3rgR -->
+  <div class="node" id="n3rgR">
+    <div class="elabel elR">R</div>
+    <div style="position:relative">
+      <!--
+        R R B G
+        R R R B
+        R R B G
+        B R B G
+        flood: (0,0)(0,1)(1,0)(1,1)(1,2)(2,0)(2,1)(3,1)
+        non-flood: (0,2)B (0,3)G (1,3)B (2,2)B (2,3)G (3,0)B (3,2)B (3,3)G
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cB">B</div><div class="c cG">G</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cB">B</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cB">B</div><div class="c cG">G</div>
+        <div class="c cB">B</div><div class="c cR fl">R</div><div class="c cB">B</div><div class="c cG">G</div>
+      </div>
+      <div class="dbadge">3</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {B}</div>
+      <div class="mv-label">Moves: 3</div>
+    </div>
+  </div>
+
+</div>
+<div class="spacer"></div>
+
+<!--
+=================================================================
+  DEPTH 4
+
+  n3gbG → R: big G flood → R.
+    Grid: R R R R / R R R B / R R R R / R R R R
+    Flood BFS R from (0,0): all except (1,3)=B
+    Neighbors: {B}
+
+  n3gbG → B: big G flood → B.
+    Grid: B B B B / R B R B / B B B B / B R B B
+    Flood: (0,0)(0,1)(0,2)(0,3) then (1,1) then (2,0)(2,1)(2,2)(2,3) then (3,0)(3,2)(3,3)
+    NOT: (1,0)=R (1,2)=R (3,1)=R (1,3)=B(isolated: (0,3)=B✓ via (0,3)?)
+    Wait: (0,3)=B and (1,3)=B. (0,3) is in flood (was G→B).
+    So (1,3) IS reachable via (0,3)=B!
+    Flood = {(0,0)(0,1)(0,2)(0,3)(1,1)(1,3)(2,0)(2,1)(2,2)(2,3)(3,0)(3,2)(3,3)}
+    NOT: (1,0)=R (1,2)=R (3,1)=R
+    Neighbors: {R}
+
+  n3gbR → G: big R flood → G. 12 R→G.
+    Grid: G G G G / G G G B / G G G G / G G G G
+    (1,3)=B stays. Flood G from (0,0): all except (1,3)=B
+    Neighbors: {B}
+
+  n3gbR → B: big R flood → B. 12 R→B.
+    Grid: B B B G / B B B B / B B B G / B B B G
+    (1,3) was B already. Now (1,2)→B. (1,3) reachable via (1,2)=B!
+    Flood: all B. Non-flood: (0,3)=G (2,3)=G (3,3)=G
+    Neighbors: {G}
+
+  n3grB → G: only option. All B→G.
+    Grid: G G G G / G G G G / G G G G / G G G G  ← SOLVED!
+
+  n3rgB → G: flood {10 B cells}→G.
+    Grid: G G G G / G G R G / G G G G / G R G G
+    Flood BFS G from (0,0): all except (1,2)=R (3,1)=R
+    Neighbors: {R}
+
+  n3rgB → R: flood {10 B cells}→R.
+    Grid: R R R G / R R R B / R R R G / R R G G  wait...
+    flood was {(0,0)(0,1)(0,2)(1,0)(1,1)(2,0)(2,1)(2,2)(3,0)(3,2)} → R
+    Grid: R R R G / R R R B / R R R G / R R G G
+    Wait: (3,2) was in flood → R. (3,3)=G stays. (3,1)=R was original R.
+    Grid: R R R G / R R R B / R R R G / R R R G
+    (same as n3gbR!) 
+    Flood BFS R: all 12. Non-flood: (0,3)G (1,3)B (2,3)G (3,3)G
+    Neighbors: {G, B}
+
+  n3rgR → B: only {B} neighbor. flood {8 R}→B.
+    Grid: B B B G / B B B B / B B B G / B B B G
+    (same as n3grB!)
+    Flood: all B except (0,3)(2,3)(3,3)=G
+    Neighbors: {G}
+=================================================================
+-->
+<div class="level" id="lv4">
+
+  <!-- n4gbGR: n3gbG→R -->
+  <div class="node" id="n4gbGR">
+    <div class="elabel elR">R</div>
+    <div style="position:relative">
+      <!--
+        R R R R
+        R R R B
+        R R R R
+        R R R R
+        flood: all except (1,3)=B
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cB">B</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div>
+      </div>
+      <div class="dbadge">4</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {B}</div>
+      <div class="mv-label">Moves: 4</div>
+    </div>
+  </div>
+
+  <!-- n4gbGB: n3gbG→B -->
+  <div class="node" id="n4gbGB">
+    <div class="elabel elB">B</div>
+    <div style="position:relative">
+      <!--
+        B B B B
+        R B R B
+        B B B B
+        B R B B
+        flood: all except (1,0)R (1,2)R (3,1)R
+        (1,3)=B reachable via (0,3)=B
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+        <div class="c cR">R</div><div class="c cB fl">B</div><div class="c cR">R</div><div class="c cB fl">B</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+        <div class="c cB fl">B</div><div class="c cR">R</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+      </div>
+      <div class="dbadge">4</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {R}</div>
+      <div class="mv-label">Moves: 4</div>
+    </div>
+  </div>
+
+  <!-- n4gbRG: n3gbR→G -->
+  <div class="node" id="n4gbRG">
+    <div class="elabel elG">G</div>
+    <div style="position:relative">
+      <!--
+        G G G G
+        G G G B
+        G G G G
+        G G G G
+        flood: all except (1,3)=B
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cB">B</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+      </div>
+      <div class="dbadge">4</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {B}</div>
+      <div class="mv-label">Moves: 4</div>
+    </div>
+  </div>
+
+  <!-- n4gbRB: n3gbR→B -->
+  <div class="node" id="n4gbRB">
+    <div class="elabel elB">B</div>
+    <div style="position:relative">
+      <!--
+        B B B G
+        B B B B
+        B B B G
+        B B B G
+        flood: all B; non-flood (0,3)G (2,3)G (3,3)G
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cG">G</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cG">G</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cG">G</div>
+      </div>
+      <div class="dbadge">4</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {G}</div>
+      <div class="mv-label">Moves: 4</div>
+    </div>
+  </div>
+
+  <!-- n4grBG: n3grB→G  ★ SOLVED ★ -->
+  <div class="node" id="n4grBG">
+    <div class="elabel elG">G</div>
+    <div style="position:relative">
+      <!--
+        G G G G
+        G G G G
+        G G G G
+        G G G G
+        ALL SOLVED
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px);border-color:#22c55e;box-shadow:0 0 12px #22c55e77">
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+      </div>
+      <div class="dbadge solved">✓</div>
+    </div>
+    <div class="info">
+      <div class="solved-tag">✓ SOLVED — 4 moves!</div>
+      <div class="path-tag">G → R → B → G</div>
+    </div>
+  </div>
+
+  <!-- n4rgBG: n3rgB→G -->
+  <div class="node" id="n4rgBG">
+    <div class="elabel elG">G</div>
+    <div style="position:relative">
+      <!--
+        G G G G
+        G G R G
+        G G G G
+        G R G G
+        flood: all except (1,2)R (3,1)R
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cR">R</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cR">R</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+      </div>
+      <div class="dbadge">4</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {R}</div>
+      <div class="mv-label">Moves: 4</div>
+    </div>
+  </div>
+
+  <!-- n4rgBR: n3rgB→R -->
+  <div class="node" id="n4rgBR">
+    <div class="elabel elR">R</div>
+    <div style="position:relative">
+      <!--
+        R R R G
+        R R R B
+        R R R G
+        R R R G
+        flood: all 12 R; non-flood (0,3)G (1,3)B (2,3)G (3,3)G
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cG">G</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cB">B</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cG">G</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cG">G</div>
+      </div>
+      <div class="dbadge">4</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {G, B}</div>
+      <div class="mv-label">Moves: 4</div>
+    </div>
+  </div>
+
+  <!-- n4rgRB: n3rgR→B -->
+  <div class="node" id="n4rgRB">
+    <div class="elabel elB">B</div>
+    <div style="position:relative">
+      <!--
+        B B B G
+        B B B B
+        B B B G
+        B B B G
+        same shape as n3grB; flood all B; non-flood (0,3)(2,3)(3,3)=G
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cG">G</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cG">G</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cG">G</div>
+      </div>
+      <div class="dbadge">4</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {G}</div>
+      <div class="mv-label">Moves: 4</div>
+    </div>
+  </div>
+
+</div>
+<div class="spacer"></div>
+
+<!--
+=================================================================
+  DEPTH 5 — final moves to SOLVED
+  n4gbGR→B: all R→B. SOLVED (all B)
+  n4gbGB→R: all B→R except those already R... wait:
+    flood {13 B cells}→R. remaining (1,0)R(1,2)R(3,1)R already R → merge
+    Grid: all R. SOLVED.
+  n4gbRG→B: only (1,3)=B. G→B all cells+merge. SOLVED.
+  n4gbRB→G: only (0,3)(2,3)(3,3)=G neighbor. B→G. SOLVED.
+  n4rgBG→R: (1,2)R(3,1)R neighbors. G→R. Grid:
+    all G→R. Then R cells: huge flood. SOLVED.
+  n4rgBR→G: big R→G. Grid all G except (1,3)B. Neighbors:{B}.
+  n4rgBR→B: big R→B. Grid:BBBG/BBBB/BBBG/BBBG. Neighbors:{G}.
+  n4rgRB→G: only G neighbor. B→G. SOLVED.
+=================================================================
+-->
+<div class="level" id="lv5">
+
+  <!-- n4gbGR→B SOLVED -->
+  <div class="node" id="n5gbGRB">
+    <div class="elabel elB">B</div>
+    <div style="position:relative">
+      <div class="gbox" style="grid-template-columns:repeat(4,27px);border-color:#22c55e;box-shadow:0 0 10px #22c55e66">
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+      </div>
+      <div class="dbadge solved">✓</div>
+    </div>
+    <div class="info">
+      <div class="solved-tag">✓ SOLVED — 5 moves!</div>
+      <div class="path-tag">G→B→G→R→B</div>
+    </div>
+  </div>
+
+  <!-- n4gbGB→R SOLVED -->
+  <div class="node" id="n5gbGBR">
+    <div class="elabel elR">R</div>
+    <div style="position:relative">
+      <div class="gbox" style="grid-template-columns:repeat(4,27px);border-color:#22c55e;box-shadow:0 0 10px #22c55e66">
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div>
+      </div>
+      <div class="dbadge solved">✓</div>
+    </div>
+    <div class="info">
+      <div class="solved-tag">✓ SOLVED — 5 moves!</div>
+      <div class="path-tag">G→B→G→B→R</div>
+    </div>
+  </div>
+
+  <!-- n4gbRG→B SOLVED -->
+  <div class="node" id="n5gbRGB">
+    <div class="elabel elB">B</div>
+    <div style="position:relative">
+      <div class="gbox" style="grid-template-columns:repeat(4,27px);border-color:#22c55e;box-shadow:0 0 10px #22c55e66">
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+      </div>
+      <div class="dbadge solved">✓</div>
+    </div>
+    <div class="info">
+      <div class="solved-tag">✓ SOLVED — 5 moves!</div>
+      <div class="path-tag">G→B→R→G→B</div>
+    </div>
+  </div>
+
+  <!-- n4gbRB→G SOLVED -->
+  <div class="node" id="n5gbRBG">
+    <div class="elabel elG">G</div>
+    <div style="position:relative">
+      <div class="gbox" style="grid-template-columns:repeat(4,27px);border-color:#22c55e;box-shadow:0 0 10px #22c55e66">
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+      </div>
+      <div class="dbadge solved">✓</div>
+    </div>
+    <div class="info">
+      <div class="solved-tag">✓ SOLVED — 5 moves!</div>
+      <div class="path-tag">G→B→R→B→G</div>
+    </div>
+  </div>
+
+  <!-- spacer for n4grBG already solved at 4 -->
+  <div style="width:110px"></div>
+
+  <!-- n4rgBG→R SOLVED -->
+  <div class="node" id="n5rgBGR">
+    <div class="elabel elR">R</div>
+    <div style="position:relative">
+      <div class="gbox" style="grid-template-columns:repeat(4,27px);border-color:#22c55e;box-shadow:0 0 10px #22c55e66">
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div>
+        <div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div><div class="c cR fl">R</div>
+      </div>
+      <div class="dbadge solved">✓</div>
+    </div>
+    <div class="info">
+      <div class="solved-tag">✓ SOLVED — 5 moves!</div>
+      <div class="path-tag">R→G→B→G→R</div>
+    </div>
+  </div>
+
+  <!-- n4rgBR→G (not yet solved, continues) -->
+  <div class="node" id="n5rgBRG">
+    <div class="elabel elG">G</div>
+    <div style="position:relative">
+      <!--
+        G G G G
+        G G G B
+        G G G G
+        G G G G
+        flood: all except (1,3)=B
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cB">B</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+      </div>
+      <div class="dbadge">5</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {B}</div>
+      <div class="mv-label">Moves: 5</div>
+    </div>
+  </div>
+
+  <!-- n4rgBR→B (not yet solved) -->
+  <div class="node" id="n5rgBRB">
+    <div class="elabel elB">B</div>
+    <div style="position:relative">
+      <!--
+        B B B G
+        B B B B
+        B B B G
+        B B B G
+      -->
+      <div class="gbox" style="grid-template-columns:repeat(4,27px)">
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cG">G</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cG">G</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cG">G</div>
+      </div>
+      <div class="dbadge">5</div>
+    </div>
+    <div class="info">
+      <div class="nb-label">Neighbors: {G}</div>
+      <div class="mv-label">Moves: 5</div>
+    </div>
+  </div>
+
+  <!-- n4rgRB→G SOLVED -->
+  <div class="node" id="n5rgRBG">
+    <div class="elabel elG">G</div>
+    <div style="position:relative">
+      <div class="gbox" style="grid-template-columns:repeat(4,27px);border-color:#22c55e;box-shadow:0 0 10px #22c55e66">
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+      </div>
+      <div class="dbadge solved">✓</div>
+    </div>
+    <div class="info">
+      <div class="solved-tag">✓ SOLVED — 5 moves!</div>
+      <div class="path-tag">R→G→R→B→G</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="spacer"></div>
+
+<!-- DEPTH 6 — final leaves -->
+<div class="level" id="lv6">
+
+  <div style="width:900px"></div>
+
+  <!-- n5rgBRG→B SOLVED -->
+  <div class="node" id="n6rgBRGB">
+    <div class="elabel elB">B</div>
+    <div style="position:relative">
+      <div class="gbox" style="grid-template-columns:repeat(4,27px);border-color:#22c55e;box-shadow:0 0 10px #22c55e66">
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+        <div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div><div class="c cB fl">B</div>
+      </div>
+      <div class="dbadge solved">✓</div>
+    </div>
+    <div class="info">
+      <div class="solved-tag">✓ SOLVED — 6 moves!</div>
+      <div class="path-tag">R→G→B→R→G→B</div>
+    </div>
+  </div>
+
+  <!-- n5rgBRB→G SOLVED -->
+  <div class="node" id="n6rgBRBG">
+    <div class="elabel elG">G</div>
+    <div style="position:relative">
+      <div class="gbox" style="grid-template-columns:repeat(4,27px);border-color:#22c55e;box-shadow:0 0 10px #22c55e66">
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+        <div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div><div class="c cG fl">G</div>
+      </div>
+      <div class="dbadge solved">✓</div>
+    </div>
+    <div class="info">
+      <div class="solved-tag">✓ SOLVED — 6 moves!</div>
+      <div class="path-tag">R→G→B→R→B→G</div>
+    </div>
+  </div>
+
+</div>
+
+</div><!-- tree -->
+</div><!-- wrap -->
+
+<script>
+const edges = [
+  ['n0','n1g','#16a34a'],
+  ['n0','n1r','#dc2626'],
+  ['n1g','n2gb','#1d6fe8'],
+  ['n1g','n2gr','#dc2626'],
+  ['n1r','n2rg','#16a34a'],
+  ['n2gb','n3gbG','#16a34a'],
+  ['n2gb','n3gbR','#dc2626'],
+  ['n2gr','n3grB','#1d6fe8'],
+  ['n2rg','n3rgB','#1d6fe8'],
+  ['n2rg','n3rgR','#dc2626'],
+  ['n3gbG','n4gbGR','#dc2626'],
+  ['n3gbG','n4gbGB','#1d6fe8'],
+  ['n3gbR','n4gbRG','#16a34a'],
+  ['n3gbR','n4gbRB','#1d6fe8'],
+  ['n3grB','n4grBG','#16a34a'],
+  ['n3rgB','n4rgBG','#16a34a'],
+  ['n3rgB','n4rgBR','#dc2626'],
+  ['n3rgR','n4rgRB','#1d6fe8'],
+  ['n4gbGR','n5gbGRB','#1d6fe8'],
+  ['n4gbGB','n5gbGBR','#dc2626'],
+  ['n4gbRG','n5gbRGB','#1d6fe8'],
+  ['n4gbRB','n5gbRBG','#16a34a'],
+  ['n4rgBG','n5rgBGR','#dc2626'],
+  ['n4rgBR','n5rgBRG','#16a34a'],
+  ['n4rgBR','n5rgBRB','#1d6fe8'],
+  ['n4rgRB','n5rgRBG','#16a34a'],
+  ['n5rgBRG','n6rgBRGB','#1d6fe8'],
+  ['n5rgBRB','n6rgBRBG','#16a34a'],
+];
+
+window.addEventListener('load', () => {
+  const svg  = document.getElementById('lines');
+  const wrap = document.getElementById('wrap');
+  const wR   = wrap.getBoundingClientRect();
+  svg.setAttribute('width',  wrap.scrollWidth);
+  svg.setAttribute('height', wrap.scrollHeight);
+
+  edges.forEach(([pid, cid, color]) => {
+    const pEl = document.getElementById(pid);
+    const cEl = document.getElementById(cid);
+    if (!pEl || !cEl) return;
+    const pR = pEl.getBoundingClientRect();
+    const cR = cEl.getBoundingClientRect();
+    const px = pR.left - wR.left + pR.width/2;
+    const py = pR.bottom - wR.top;
+    const cx = cR.left - wR.left + cR.width/2;
+    const cy = cR.top - wR.top;
+    const my = (py+cy)/2;
+
+    // shadow line for contrast
+    const shadow = document.createElementNS('http://www.w3.org/2000/svg','path');
+    shadow.setAttribute('d',`M ${px} ${py} C ${px} ${my}, ${cx} ${my}, ${cx} ${cy}`);
+    shadow.setAttribute('stroke','#000');
+    shadow.setAttribute('stroke-width','5');
+    shadow.setAttribute('fill','none');
+    shadow.setAttribute('opacity','0.18');
+    svg.appendChild(shadow);
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',`M ${px} ${py} C ${px} ${my}, ${cx} ${my}, ${cx} ${cy}`);
+    path.setAttribute('stroke', color);
+    path.setAttribute('stroke-width','3');
+    path.setAttribute('fill','none');
+    path.setAttribute('opacity','1');
+    svg.appendChild(path);
+
+    // bigger solid arrowhead
+    const arr = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    arr.setAttribute('points',`${cx},${cy} ${cx-8},${cy-16} ${cx+8},${cy-16}`);
+    arr.setAttribute('fill', color);
+    arr.setAttribute('opacity','1');
+    // black border on arrowhead
+    arr.setAttribute('stroke','#000');
+    arr.setAttribute('stroke-width','0.8');
+    svg.appendChild(arr);
+  });
+});
+</script>
+</body>
+</html>
